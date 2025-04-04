@@ -44,34 +44,74 @@ st.markdown("""
 # ✅ 1. 자연어 기반 예약 요청
 예약GPT = {}  # 기본값 미리 초기화
 
-with st.expander("💬 자연어로 예약하기", expanded=False):
-    user_query = st.chat_input("예: 내일 오후 3시에 치과 예약할래요")
+with st.expander("💬 자연어로 대화하며 예약하기", expanded=False):
+    if "step" not in st.session_state:
+        st.session_state.step = 0
+        st.session_state.예약정보 = {}
+        st.session_state.chat_history = []
 
-    if user_query:
-        with st.spinner("하이닥봇이 예약 내용을 파악하는 중입니다..."):
-            gpt_response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": """
-                        사용자의 병원 예약 요청을 아래 JSON 형식으로 출력하세요.
-                        {"진료과": "치과", "날짜": "2025-04-10", "시간": "오전 10시"}
-                        날짜는 yyyy-mm-dd 형식, 시간은 "오전/오후 N시" 형식.
-                        JSON만 출력하세요.
-                        """
-                    },
-                    {"role": "user", "content": user_query}
-                ]
-            )
-            raw_text = gpt_response.choices[0].message.content.strip()
+    user_input = st.chat_input("예: 치과요 → 이번 주 금요일 오전 10시요 → 홍길동, 010-1234-5678")
+
+    for msg in st.session_state.chat_history:
+        st.chat_message(msg["role"]).write(msg["content"])
+
+    if user_input:
+        st.chat_message("user").write(user_input)
+        st.session_state.chat_history.append({"role": "user", "content": user_input})
+
+        step = st.session_state.step
+        info = st.session_state.예약정보
+
+        if step == 0:
+            info["진료과"] = user_input
+            msg = f"{user_input} 예약 좋습니다. 언제로 예약하시겠어요? (예: 4월 6일 오후 3시)"
+            st.session_state.step = 1
+
+        elif step == 1:
+            info["예약일시"] = user_input
+            msg = "예약자 성함과 연락처를 알려주세요. (예: 홍길동, 010-1234-5678)"
+            st.session_state.step = 2
+
+        elif step == 2:
             try:
-                예약GPT = json.loads(raw_text)
-                st.success("🎉 하이닥봇이 예약 정보를 분석했어요!")
-                st.json(예약GPT)
-            except:
-                st.warning("정확히 인식하지 못했어요. 다시 말씀해주세요.")
+                이름, 연락처 = [x.strip() for x in user_input.split(",")]
+                info["성함"] = 이름
+                info["연락처"] = 연락처
 
+                # 예약 저장
+                예약기록 = {
+                    "예약일시": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "진료과": info['진료과'],
+                    "예약날짜": info['예약일시'].split()[0] if ' ' in info['예약일시'] else info['예약일시'],
+                    "예약시간": info['예약일시'].split()[1] if ' ' in info['예약일시'] else "",
+                    "성함": info['성함'],
+                    "연락처": info['연락처']
+                }
+
+                csv_file = "예약내역.csv"
+                if os.path.exists(csv_file):
+                    df = pd.read_csv(csv_file)
+                    df = pd.concat([df, pd.DataFrame([예약기록])], ignore_index=True)
+                else:
+                    df = pd.DataFrame([예약기록])
+                df.to_csv(csv_file, index=False)
+
+                msg = f"""
+✅ 예약이 완료되었습니다!  
+- 진료과: {info['진료과']}  
+- 예약일시: {info['예약일시']}  
+- 이름: {info['성함']}  
+- 연락처: {info['연락처']}
+                """
+
+                st.session_state.step = 0
+                st.session_state.예약정보 = {}
+            except:
+                msg = "입력 형식을 다시 확인해주세요. (예: 홍길동, 010-1234-5678)"
+
+        st.chat_message("assistant").write(msg)
+        st.session_state.chat_history.append({"role": "assistant", "content": msg})
+        
     예약GPT = {}
 
 # ✅ 2. 클릭 기반 예약 입력
