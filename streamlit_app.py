@@ -3,7 +3,7 @@
 import streamlit as st
 import openai
 
-openai.api_key = "YOUR_OPENAI_API_KEY"  # 보안상 실제로는 secrets.toml로 관리 권장
+openai.api_key = "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"  # 보안상 실제로는 secrets.toml로 관리 권장
 
 st.title("🏥 병원 예약 챗봇")
 
