@@ -8,7 +8,8 @@ import os
 import pandas as pd
 
 # ✅ OpenAI API 설정 (본인 API 키 입력)
-client = OpenAI(api_key="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")
+client = OpenAI(api_key="ICT25_CLASS03_APIKEY
+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")
 
 # ✅ 페이지 설정
 st.set_page_config(page_title="하이닥봇 - 병원 예약 챗봇", page_icon="🤖", layout="centered")
